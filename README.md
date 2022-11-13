@@ -3,6 +3,7 @@ Welcome!
 This is my solution for controlling a seven segment display with n digits.
 Feel free to use it anywere in your projects.
 Cheers, Donut Studio!
+![example](https://github.com/Donut-Studio/Arduino-Seven-Segment-Controller/blob/main/assets/example1.gif)
 
 
 ***
