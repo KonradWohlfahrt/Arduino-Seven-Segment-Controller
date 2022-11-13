@@ -6,10 +6,8 @@
 
 #include "DonutStudioSevenSegment.h"
 
-#define MAXDIGITS 4
-
 int gnd[] = { 10, 11, 12, 13 };
-SegmentController disp = SegmentController(2, 3, 4, 5, 6, 7, 8, 9, gnd);
+SegmentController disp = SegmentController(2, 3, 4, 5, 6, 7, 8, 9, gnd, 4);
 
 void setup() 
 {

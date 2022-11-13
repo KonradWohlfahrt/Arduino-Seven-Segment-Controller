@@ -23,12 +23,14 @@
             dp
 */
 
-#ifndef MAXDIGITS
-#define MAXDIGITS 4
-#endif
+
 
 #ifndef DonutStudioSevenSegment.h
 #define DonutStudioSevenSegment.h
+
+#ifndef MAXDIGITS
+#define MAXDIGITS 8
+#endif
 
 #include "Arduino.h"
 
@@ -40,20 +42,20 @@ class SegmentController
     */
 
     // constructor of the class in which you set all the pins for the display
-    SegmentController(int a, int b, int c, int d, int e, int f, int g, int dp, int gnd[MAXDIGITS]);
+    SegmentController(int a, int b, int c, int d, int e, int f, int g, int dp, int gnd[], int length);
 
     /*
       --- METHODS ---
     */
 
     // initialize the display with the pin type, refresh time and brightness
-    void initialize(bool _commonAnode, int _refreshTime = 2, byte _brightness = 175);
+    void initialize(bool _commonAnode, unsigned long _refreshTime = 2, byte _brightness = 175);
 
     // refresh the currently displayed byte
     void refreshDisplay();
 
     // set an byte value to display
-    void setByte(byte d[MAXDIGITS]);
+    void setByte(byte d[]);
     // set an integer value to display
     void setInt(int number, bool showLeadZeros = false);
     // set an float value to display
@@ -94,7 +96,7 @@ class SegmentController
     // type of the display: common cathode-0, command anode-1
     int commonPinType = 0;
     // time (in milliseconds) to refresh the display
-    int refreshTime = 2;
+    unsigned long refreshTime = 2;
     // brightness of the display max=255
     byte brightness = 200;
     // time (in milliseconds) of blinking digits
@@ -102,6 +104,10 @@ class SegmentController
 
     // pins for the segments: a, b, c, d, e, f, g, dp
     int segmentPins[8];
+    // is a pin for the decimal point given?
+    bool hasDP = true;
+    // the length of the display
+    int displayLength = 4;
     // ground pins for the digits
     int gndPins[MAXDIGITS];
     // the byte which is currently displayed
