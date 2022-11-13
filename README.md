@@ -6,20 +6,20 @@ Cheers, Donut Studio!
 
 --- seven segment display ---
 
-       D4        D3       D2        D1        
-
-        A
-       ---
-    |       |
-  F |       | B
-    |       |
-       -G-
-    |       |
-  E |       | C
-    |       |
-       ---
-        D   o 
-            dp
+       D4        D3       D2        D1 \        
+\
+        A \
+       --- \
+    |       | \
+  F |       | B \
+    |       | \
+       -G- \
+    |       | \
+  E |       | C \
+    |       | \
+       --- \
+        D   o \
+            dp \
 
 
 ***
