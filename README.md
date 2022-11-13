@@ -4,23 +4,6 @@ This is my solution for controlling a seven segment display with n digits.
 Feel free to use it anywere in your projects.
 Cheers, Donut Studio!
 
---- seven segment display ---
-
-       D4        D3       D2        D1 \        
-\
-        A \
-       --- \
-    |       | \
-  F |       | B \
-    |       | \
-       -G- \
-    |       | \
-  E |       | C \
-    |       | \
-       --- \
-        D   o \
-            dp \
-
 
 ***
 # Features
