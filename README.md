@@ -22,33 +22,18 @@ Cheers, Donut Studio!
 
 ***
 # Installation
-1. download the `DonutStudioSevenSegment` folder and place it into the libraries folder of the Arduino Software
-2. open up the example sketch at `File/Examples/DonutStudioSevenSegment/DonutStudioSevenSegmentExample`
-
-
-***
-# Documentation
-- `SegmentController(int a, int b, int c, int d, int e, int f, int g, int dp, int gnd[], int length);` => constructor of the class in which you set all the pins and length for the display
-- `void initialize(bool _commonAnode, int _refreshTime = 2, byte _brightness = 175);` => initialize the display with the pin type, refresh time and brightness
-- `void refreshDisplay();` => refresh the currently displayed byte
-- `void setByte(byte d[]);` => set an byte value to display
-- `void setInt(int number, bool showLeadZeros = false);` => set an integer value to display
-- `void void setFloat(float number);` => set an float value to display
-- `void setBlinkDigit(int _digit, bool _value);` => enable/disable blinking on one digit
-- `void setBlinkAll(bool _value);` => enable/disable blinking on all digits
-- `void setDigit(int _digit, bool _value);` => enable/disable one digit
-- `void setDigitAll(bool _value);` => enable/disable all digits
-- `void resetEffects();` => reset blinking and deactivated digits
+1. download the `DonutStudioSevenSegment` folder and extract it into the libraries folder of the Arduino Software
+2. start your arduino ide and open the example sketch at `File/Examples/DonutStudioSevenSegment/DonutStudioSevenSegmentExample`
+3. connect the pins of the display with your controller
+4. upload the sketch
 
 
 ***
 # Usage
-After importing you're ready to code.
 At the top of your sketch add those lines:
 ```cpp
 // include the libraray
 #include "DonutStudioSevenSegment.h"
-
 // define the ground pins
 int gnd[] = { 10, 11, 12, 13 };
 // create an object of the SegmentController class and define the segment, ground pins and display length.
@@ -75,18 +60,16 @@ Then you have to call the `refreshDisplay()` method in your loop.
 The final file should look something like this:
 ```cpp
 #include "DonutStudioSevenSegment.h"
-
 int gnd[] = { 10, 11, 12, 13 };
 SegmentController disp = SegmentController(2, 3, 4, 5, 6, 7, 8, 9, gnd, 4);
 
 void setup() 
 {
-  disp.initialize(true, 2, 200);
+  disp.initialize(true, 2, 175);
 
-  disp.setInt(1421);
+  disp.setInt(1234);
   disp.setDigit(0, false);
-  disp.setDigit(3, false);
-  disp.setBlinkAll(true);
+  disp.setBlink(1);
 }
 void loop() 
 {
@@ -96,9 +79,35 @@ void loop()
 
 
 ***
+# Documentation
+- `SegmentController(int a, int b, int c, int d, int e, int f, int g, int dp, int gnd[], int length);` => constructor of the class in which you set all the pins and length for the display
+---
+- `void initialize(bool _commonAnode, int _refreshTime = 2, byte _brightness = 175);` => initialize the display with the pin type, refresh time and brightness
+- `void refreshDisplay();` => refresh the currently displayed byte
+---
+- `void setByte(byte d[]);` => set an byte value to display
+- `void setInt(int number, bool showLeadZeros = false);` => set an integer value to display
+- `void setFloat(float number);` => set an float value to display
+---
+- `byte getDigit(int _digit);` => returns the corresponding digit to a number (0-9)
+- `byte getMinus();` => returns the minus digit
+- `byte addDot(byte _byte);` => returns th byte with the dot added
+- `byte inverseByte(byte _byte);` => returns the inversed byte
+---
+- `void setBrightness(byte _brightness);` => set the brightness of the display
+- `void setBlinkInterval(int _blinkInterval);` => set the blink interval of the display
+---
+- `void setBlink(int _digit, bool _value);` => enable/disable blinking on one digit
+- `void setBlinkAll(bool _value);` => enable/disable blinking on all digits
+- `void setDigit(int _digit, bool _value);` => enable/disable one digit
+- `void setDigitAll(bool _value);` => enable/disable all digits
+- `void resetEffects();` => reset blinking and deactivated digits
+
+
+***
 # Credits
 DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with n digits.
-Created by Donut Studio, November 13, 2022.
+Created by Donut Studio, December 21, 2022.
 Released into the public domain.
 
 
