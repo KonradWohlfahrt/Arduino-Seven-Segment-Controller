@@ -1,6 +1,6 @@
 /*
   DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with n digits.
-  Created by Donut Studio, December 21, 2022.
+  Created by Donut Studio, December 24, 2022.
   Released into the public domain.
 */
 
@@ -53,6 +53,11 @@ class SegmentController
     // initialize the display with the pin type, refresh time and brightness
     void initialize(bool _commonAnode, unsigned long _refreshTime = 2, byte _brightness = 175);
 
+    // set the brightness of the display 
+    void setBrightness(byte _brightness);
+    // set the blink interval of the display
+    void setBlinkInterval(int _blinkInterval);
+
     // refresh the currently displayed byte
     void refreshDisplay();
 
@@ -67,15 +72,21 @@ class SegmentController
     byte getDigit(int _digit);
     // returns the minus digit
     byte getMinus();
-    // returns th byte with the dot added
-    byte addDot(byte _byte);
+    // returns the dot digit
+    byte getDot();
+
+    // returns the byte with the segments activated
+    byte activateByte(byte _byte, byte _activation);
+    // returns the byte with the segments deactivated
+    byte deactivateByte(byte _byte, byte _deactivation);
+
+    // returns the byte with one segment activated
+    byte addSegment(byte _byte, int _segment);
+    // returns the byte with one segment deactivated
+    byte removeSegment(byte _byte, int _segment);
+
     // returns the inversed byte
     byte inverseByte(byte _byte);
-
-    // set the brightness of the display 
-    void setBrightness(byte _brightness);
-    // set the blink interval of the display
-    void setBlinkInterval(int _blinkInterval);
 
     // enable/disable blinking on one digit
     void setBlink(int _digit, bool _value = true);
@@ -87,7 +98,6 @@ class SegmentController
     void setDigitAll(bool _value = true);
     // reset blinking and deactivated digits
     void resetEffects();
-
   private:
     /*
       --- METHODS ---
@@ -100,11 +110,12 @@ class SegmentController
     
     // get the length of the segments
     int getSegmentLength();
+
     // check if an integer number is able to be display
     bool NumberInRange(int _number);
     // check if an float number is able to be display
     bool NumberInRange(float _number);
-
+    
     /*
       --- VARIABLES ---
     */
@@ -132,11 +143,8 @@ class SegmentController
 
     // all digits from 0-9 and off
     byte digits[11] = { B00111111, B00000110, B01011011, B01001111, B01100110, B01101101, B01111101, B00000111, B01111111, B01101111, B00000000 };
-
-    // the minus symbol
-    byte minus = B01000000;
-    // the dot symbol
-    byte dot = B10000000;
+    // the segments
+    byte segments[8] = { B00000001, B00000010, B00000100, B00001000, B00010000, B00100000, B01000000, B10000000 };
 
     // array of the digits that blink
     bool blinkDigit[MAXDIGITS];

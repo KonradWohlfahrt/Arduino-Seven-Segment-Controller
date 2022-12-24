@@ -1,6 +1,6 @@
 /*
   DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with n digits.
-  Created by Donut Studio, December 21, 2022.
+  Created by Donut Studio, December 24, 2022.
   Released into the public domain.
 */
 
@@ -27,11 +27,12 @@
 #include "DonutStudioSevenSegment.h"
 
 /*
-  --- SEGMENT CONTROLLER CLASS ---
+  --- SEGMENT CONTROLLER CONSTRUCTOR ---
 */
 
 SegmentController::SegmentController(int a, int b, int c, int d, int e, int f, int g, int dp, int gnd[], int length)
 {
+  // set the segment pins
   segmentPins[0] = a;
   segmentPins[1] = b;
   segmentPins[2] = c;
@@ -40,12 +41,15 @@ SegmentController::SegmentController(int a, int b, int c, int d, int e, int f, i
   segmentPins[5] = f;
   segmentPins[6] = g;
   segmentPins[7] = dp;
+  // check if the dp will be used
   hasDP = dp > 0;
   
+  // set the display length
   displayLength = length;
   if (displayLength > MAXDIGITS)
     displayLength = MAXDIGITS;
 
+  // set the ground pins
   for (int i = 0; i < displayLength; i++)
     gndPins[i] = gnd[i];
 }
@@ -56,24 +60,32 @@ SegmentController::SegmentController(int a, int b, int c, int d, int e, int f, i
 
 void SegmentController::initialize(bool _commonAnode, unsigned long _refreshTime, byte _brightness)
 {
+  // set the common pin type 
   commonPinType = _commonAnode ? 1 : 0;
+  // set the display refresh time
   refreshTime = _refreshTime;
+  // set the brightness of the display
   setBrightness(_brightness);
 
+  // inverse the bytes if the display is common anode
   if (commonPinType == 1) 
   {
+    // inverse digits
     for (int i = 0; i < sizeof(digits) / sizeof(digits[0]); i++) 
       digits[i] = inverseByte(digits[i]);
-    minus = inverseByte(minus);
-    dot = inverseByte(dot);
+    // inverse segments
+    for (int i = 0; i < sizeof(segments) / sizeof(segments[0]); i++)
+      segments[i] = inverseByte(segments[i]);
   }
 
-
-  for (int i = 0; i < getSegmentLength(); i++){
+  // set the segment pins as output and deactivate them
+  for (int i = 0; i < getSegmentLength(); i++)
+  {
     pinMode(segmentPins[i], OUTPUT);
     digitalWrite(segmentPins[i], 1 - commonPinType);
   }
 
+  // set the ground pins as output and deactivate them, reset the effects and displayment byte
   for (int i = 0; i < displayLength; i++)
   {
     blinkDigit[i] = false;
@@ -82,6 +94,15 @@ void SegmentController::initialize(bool _commonAnode, unsigned long _refreshTime
     pinMode(gndPins[i], OUTPUT);
     digitalWrite(gndPins[i], 1 - commonPinType);
   }
+}
+
+void SegmentController::setBrightness(byte _brightness)
+{
+  brightness = _brightness;
+}
+void SegmentController::setBlinkInterval(int _blinkInterval)
+{
+  blinkInterval = _blinkInterval;
 }
 
 void SegmentController::refreshDisplay()
@@ -120,13 +141,32 @@ void SegmentController::setInt(int _number, bool _showLeadZeros)
     return;
   
   bool lead = !_showLeadZeros;
+  bool negativ = _number < 0;
+  if (negativ)
+    _number *= -1;
+
   for (int i = displayLength - 1; i >= 0 ; i--)
   {
+    if (negativ && !lead && i == displayLength - 1)
+    {
+      currentDisplayByte[i] = getMinus();
+      negativ = false;
+      continue;
+    }
+
     byte digit = (int)(_number / pow(10, i)) % 10;
-    if (digit == 0 && lead)
+    if (negativ && digit == 0 && i > 0)
+    {
+      byte d = (int)(_number / pow(10, i - 1)) % 10;
+      if (d != 0)
+      {
+        currentDisplayByte[i] = getMinus();
+        negativ = false;
+      }
+    }
+    else if (lead && digit == 0)
     {
       currentDisplayByte[i] = digits[10];
-      continue;
     }
     else
     {
@@ -139,6 +179,10 @@ void SegmentController::setFloat(float _number)
 {
   if (!NumberInRange(_number))
     return;
+
+  bool negativ = _number < 0;
+  if (negativ)
+    _number *= -1;
 
   int exponent = 0;
   for (int i = -displayLength + 2; i <= displayLength; i++)
@@ -160,7 +204,7 @@ void SegmentController::setFloat(float _number)
     byte digit = (int)(_number / pow(10, i)) % 10;
 
     if (i == dotIndex)
-      currentDisplayByte[i] = addDot(digits[digit]);
+      currentDisplayByte[i] = addSegment(digits[digit], 7);
     else
       currentDisplayByte[i] = digits[digit];
   }
@@ -169,32 +213,48 @@ void SegmentController::setFloat(float _number)
 byte SegmentController::getDigit(int _digit)
 {
   if (_digit < 0 || _digit > 9)
-    return digits[11];
+    return digits[10];
   return digits[_digit];
 }
 byte SegmentController::getMinus()
 {
-  return minus;
+  return segments[6];
 }
-byte SegmentController::addDot(byte _byte)
+byte SegmentController::getDot()
+{
+  return segments[7];
+}
+
+byte SegmentController::activateByte(byte _byte, byte _activation)
 {
   if (commonPinType == 1)
-    return _byte & (byte)dot;
-  else 
-    return _byte | (byte)dot;
+    return (byte)_byte & (byte)_activation;
+  return (byte)_byte | (byte)_activation;
 }
+byte SegmentController::deactivateByte(byte _byte, byte _deactivation)
+{
+  byte deactive = inverseByte(_deactivation);
+  if (commonPinType == 1)
+    return (byte)_byte | (byte)deactive;
+  return (byte)_byte & (byte)deactive;
+}
+
+byte SegmentController::addSegment(byte _byte, int _segment)
+{
+  if (_segment < 0 || _segment > 7)
+    return _byte;
+  return activateSegment(_byte, segments[_segment]);
+}
+byte SegmentController::removeSegment(byte _byte, int _segment)
+{
+  if (_segment < 0 || _segment > 7)
+    return _byte;
+  return deactivateSegment(_byte, segments[_segment]);
+}
+
 byte SegmentController::inverseByte(byte _byte)
 {
   return ~_byte;
-}
-
-void SegmentController::setBrightness(byte _brightness)
-{
-  brightness = _brightness;
-}
-void SegmentController::setBlinkInterval(int _blinkInterval)
-{
-  blinkInterval = _blinkInterval;
 }
 
 void SegmentController::setBlink(int _digit, bool _value)
@@ -252,6 +312,7 @@ int SegmentController::getSegmentLength()
     return 8;
   return 7;
 }
+
 bool SegmentController::NumberInRange(int _number)
 {
   return (-(pow(10, displayLength - 1) - 1)) <= _number 
