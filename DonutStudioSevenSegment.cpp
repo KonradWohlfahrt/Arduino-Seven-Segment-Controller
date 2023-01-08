@@ -1,6 +1,6 @@
 /*
   DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with n digits.
-  Created by Donut Studio, December 24, 2022.
+  Created by Donut Studio, January 08, 2023.
   Released into the public domain.
 */
 
@@ -29,7 +29,6 @@
 /*
   --- SEGMENT CONTROLLER CONSTRUCTOR ---
 */
-
 SegmentController::SegmentController(int a, int b, int c, int d, int e, int f, int g, int dp, int gnd[], int length)
 {
   // set the segment pins
@@ -57,7 +56,6 @@ SegmentController::SegmentController(int a, int b, int c, int d, int e, int f, i
 /*
   --- PUBLIC METHODS ---
 */
-
 void SegmentController::initialize(bool _commonAnode, unsigned long _refreshTime, byte _brightness)
 {
   // set the common pin type 
@@ -76,6 +74,14 @@ void SegmentController::initialize(bool _commonAnode, unsigned long _refreshTime
     // inverse segments
     for (int i = 0; i < sizeof(segments) / sizeof(segments[0]); i++)
       segments[i] = inverseByte(segments[i]);
+    // inverse the alphabet
+    for (int i = 0; i< sizeof(alphabet) / sizeof(alphabet[0]); i ++)
+      alphabet[i] = inverseByte(alphabet[i]);
+    // inverse the special characters
+    for (int i = 0; i< sizeof(specialCharacters) / sizeof(specialCharacters[0]); i ++)
+      specialCharacters[i] = inverseByte(specialCharacters[i]);
+    // inverse the unknown byte
+    unknownChar = inverseByte(unknownChar);
   }
 
   // set the segment pins as output and deactivate them
@@ -95,19 +101,11 @@ void SegmentController::initialize(bool _commonAnode, unsigned long _refreshTime
     digitalWrite(gndPins[i], 1 - commonPinType);
   }
 }
-
-void SegmentController::setBrightness(byte _brightness)
-{
-  brightness = _brightness;
-}
-void SegmentController::setBlinkInterval(int _blinkInterval)
-{
-  blinkInterval = _blinkInterval;
-}
-
 void SegmentController::refreshDisplay()
 {
   updateBrightness();
+  if (hasText())
+    updateDisplayText();
 
   for (int i = 0; i < displayLength; i++)
   {
@@ -129,16 +127,47 @@ void SegmentController::refreshDisplay()
   }
   delay(refreshTime);
 }
+void SegmentController::clearDisplay()
+{
+  for (int i = 0; i < displayLength; i++)
+    currentDisplayByte[i] = digits[10];
+  clearDisplayText();
+}
 
+/*
+  settings
+*/
+void SegmentController::setBrightness(byte _brightness)
+{
+  brightness = _brightness;
+}
+void SegmentController::setBlinkInterval(unsigned int _blinkInterval)
+{
+  blinkInterval = _blinkInterval;
+}
+void SegmentController::setUnknownChar(byte _byte)
+{
+  unknownChar = _byte;
+}
+void SegmentController::setTextSpeed(unsigned int _speed)
+{
+  textSpeed = _speed;
+}
+
+/*
+  displayment
+*/
 void SegmentController::setByte(byte _digits[])
 {
+  clearDisplayText();
   for (int i = 0; i < displayLength; i++)
     currentDisplayByte[i] = _digits[i];
 }
 void SegmentController::setInt(int _number, bool _showLeadZeros)
 {
-  if (!NumberInRange(_number))
+  if (!numberInRange(_number))
     return;
+  clearDisplayText();
   
   bool lead = !_showLeadZeros;
   bool negativ = _number < 0;
@@ -177,8 +206,9 @@ void SegmentController::setInt(int _number, bool _showLeadZeros)
 }
 void SegmentController::setFloat(float _number)
 {
-  if (!NumberInRange(_number))
+  if (!numberInRange(_number))
     return;
+  clearDisplayText();
 
   bool negativ = _number < 0;
   if (negativ)
@@ -204,17 +234,188 @@ void SegmentController::setFloat(float _number)
     byte digit = (int)(_number / pow(10, i)) % 10;
 
     if (i == dotIndex)
-      currentDisplayByte[i] = addSegment(digits[digit], 7);
+      currentDisplayByte[i] = setSegment(digits[digit], 7, true);
     else
       currentDisplayByte[i] = digits[digit];
   }
 }
+void SegmentController::setString(String _string, int _transform) 
+{
+  if (isStringEmpty(_string))
+    return;
+  if (displayText != "" && !displayText.equals(_string))
+    clearDisplayText();
 
+  for (int i = displayLength - 1; i >= 0 ; i--)
+  {
+    int index = (displayLength - 1) - i;
+    index += _transform;
+
+    if (index < 0 || index >= _string.length())
+      currentDisplayByte[i] = digits[10];
+    else 
+      currentDisplayByte[i] = getCharacter(_string[index]);
+  }
+}
+void SegmentController::setText(String _text, bool restart) 
+{
+  if (isStringEmpty(_text))
+    return;
+  displayText = _text;
+  displayTextLength = displayText.length();
+
+  if (textTransform >= displayTextLength)
+    restart = true;
+  if (restart)
+    textTransform = -displayLength;
+
+  textChangeInterval = millis() + textSpeed;
+
+  setString(displayText, textTransform);
+}
+
+/*
+  byte manipulation
+*/
 byte SegmentController::getDigit(int _digit)
 {
   if (_digit < 0 || _digit > 9)
     return digits[10];
   return digits[_digit];
+}
+byte SegmentController::getCharacter(char _character)
+{
+  _character = tolower(_character);
+  switch (_character)
+  {
+    // alphabet
+    case 'a':
+      return alphabet[0];
+    case 'b':
+      return alphabet[1];
+    case 'c':
+      return alphabet[2];
+    case 'd':
+      return alphabet[3];
+    case 'e':
+      return alphabet[4];
+    case 'f':
+      return alphabet[5];
+    case 'g':
+      return alphabet[6];
+    case 'h':
+      return alphabet[7];
+    case 'i':
+      return alphabet[8];
+    case 'j':
+      return alphabet[9];
+    case 'k':
+      return alphabet[10];
+    case 'l':
+      return alphabet[11];
+    case 'm':
+      return alphabet[12];
+    case 'n':
+      return alphabet[13];
+    case 'o':
+      return alphabet[14];
+    case 'p':
+      return alphabet[15];
+    case 'q':
+      return alphabet[16];
+    case 'r':
+      return alphabet[17];
+    case 's':
+      return alphabet[18];
+    case 't':
+      return alphabet[19];
+    case 'u':
+      return alphabet[20];
+    case 'v':
+      return alphabet[21];
+    case 'w':
+      return alphabet[22];
+    case 'x':
+      return alphabet[23];
+    case 'y':
+      return alphabet[24];
+    case 'z':
+      return alphabet[25];
+
+    // numbers
+    case '0':
+      return digits[0];
+    case '1':
+      return digits[1];
+    case '2':
+      return digits[2];
+    case '3':
+      return digits[3];
+    case '4':
+      return digits[4];
+    case '5':
+      return digits[5];
+    case '6':
+      return digits[6];
+    case '7':
+      return digits[7];
+    case '8':
+      return digits[8];
+    case '9':
+      return digits[9];
+
+    // special characters: ! ? [( )] / \ *° " ' + _ : ; = > < ^ ,
+    case ' ':
+      return digits[10];
+    case '.':
+      return segments[7];
+    case '-':
+      return getMinus();
+    case '!':
+      return specialCharacters[0];
+    case '?':
+      return specialCharacters[1];
+    case '[':
+      return specialCharacters[2];
+    case '(':
+      return specialCharacters[2];
+    case ']':
+      return specialCharacters[3]; 
+    case ')':
+      return specialCharacters[3]; 
+    case '/':
+      return specialCharacters[4];
+    case '\\':
+      return specialCharacters[5];
+    case '*':
+      return specialCharacters[6];
+    case '°':
+      return specialCharacters[6];
+    case '"':
+      return specialCharacters[7]; 
+    case '\'':
+      return specialCharacters[8];
+    case '+':
+      return specialCharacters[9];
+    case '_': 
+      return specialCharacters[10];
+    case ':':
+      return specialCharacters[11]; 
+    case ';':
+      return specialCharacters[12];
+    case '=':
+      return specialCharacters[13];
+    case '>': 
+      return specialCharacters[14];
+    case '<':
+      return specialCharacters[15]; 
+    case '^':
+      return specialCharacters[16];
+    case ',':
+      return specialCharacters[17];
+  }
+
+  return unknownChar;
 }
 byte SegmentController::getMinus()
 {
@@ -225,31 +426,26 @@ byte SegmentController::getDot()
   return segments[7];
 }
 
-byte SegmentController::activateByte(byte _byte, byte _activation)
+byte SegmentController::addByte(byte _byte, byte _addition)
 {
   if (commonPinType == 1)
-    return (byte)_byte & (byte)_activation;
-  return (byte)_byte | (byte)_activation;
+    return (byte)_byte & (byte)_addition;
+  return (byte)_byte | (byte)_addition;
 }
-byte SegmentController::deactivateByte(byte _byte, byte _deactivation)
+byte SegmentController::subtractByte(byte _byte, byte _subtraction)
 {
-  byte deactive = inverseByte(_deactivation);
+  byte subt = inverseByte(_subtraction);
   if (commonPinType == 1)
-    return (byte)_byte | (byte)deactive;
-  return (byte)_byte & (byte)deactive;
+    return (byte)_byte | (byte)subt;
+  return (byte)_byte & (byte)subt;
 }
-
-byte SegmentController::addSegment(byte _byte, int _segment)
+byte SegmentController::setSegment(byte _byte, int _segment, bool _value)
 {
   if (_segment < 0 || _segment > 7)
     return _byte;
-  return activateSegment(_byte, segments[_segment]);
-}
-byte SegmentController::removeSegment(byte _byte, int _segment)
-{
-  if (_segment < 0 || _segment > 7)
-    return _byte;
-  return deactivateSegment(_byte, segments[_segment]);
+  if (_value)
+    return addByte(_byte, segments[_segment]);
+  return subtractByte(_byte, segments[_segment]);
 }
 
 byte SegmentController::inverseByte(byte _byte)
@@ -257,6 +453,16 @@ byte SegmentController::inverseByte(byte _byte)
   return ~_byte;
 }
 
+void SegmentController::setDisplaySegment(int _digit, int _segment, bool _value)
+{
+  if (_digit < 0 || _digit >= displayLength)
+    return;
+  currentDisplayByte[_digit] = setSegment(currentDisplayByte[_digit], _segment, _value);
+}
+
+/*
+  effects
+*/
 void SegmentController::setBlink(int _digit, bool _value)
 {
   if (_digit < 0 || _digit >= displayLength)
@@ -286,9 +492,26 @@ void SegmentController::resetEffects()
 }
 
 /*
+  other
+*/
+bool SegmentController::isStringEmpty(String _string)
+{
+  return _string.length() <= 0;
+}
+bool SegmentController::numberInRange(int _number)
+{
+  return (-(pow(10, displayLength - 1) - 1)) <= _number 
+    && _number <= (pow(10, displayLength) - 1);
+}
+bool SegmentController::numberInRange(float _number)
+{
+  return (-(pow(10, displayLength - 1) - 1)) <= _number 
+    && _number <= (pow(10, displayLength) - 1);
+}
+
+/*
   --- PRIVATE METHODS ---
 */
-
 void SegmentController::setSegments(byte _digit)
 {
   byte pointer = 1;
@@ -305,6 +528,23 @@ void SegmentController::updateBrightness()
   if (commonPinType == 1)
     brightness = 255 - brightness;
 }
+void SegmentController::updateDisplayText()
+{
+  if (millis() >= textChangeInterval)
+  {
+    textTransform++;
+    if (textTransform >= displayTextLength)
+      textTransform = -displayLength;
+
+    textChangeInterval = millis() + textSpeed;
+
+    setString(displayText, textTransform);
+  }
+}
+void SegmentController::clearDisplayText()
+{
+  displayText = "";
+}
 
 int SegmentController::getSegmentLength()
 {
@@ -312,14 +552,7 @@ int SegmentController::getSegmentLength()
     return 8;
   return 7;
 }
-
-bool SegmentController::NumberInRange(int _number)
+bool SegmentController::hasText()
 {
-  return (-(pow(10, displayLength - 1) - 1)) <= _number 
-    && _number <= (pow(10, displayLength) - 1);
-}
-bool SegmentController::NumberInRange(float _number)
-{
-  return (-(pow(10, displayLength - 1) - 1)) <= _number 
-    && _number <= (pow(10, displayLength) - 1);
+  return !isStringEmpty(displayText);
 }
