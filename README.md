@@ -10,8 +10,8 @@ Cheers, Donut Studio!
 # Features
 - control a seven segment display directly with you ATmega without having to use another controller
 - display integers, floats, strings and your own symbols
-- enable/disable digits at runtime
-- enable/disable blinking on digits at runtime
+- enable/disable digits
+- enable/disable blinking on digits
 
 
 ***
@@ -76,8 +76,8 @@ If you are using a common cathode, one means on and zero means off.
 At a common anode it's inversed.
 
 There are multiple methods to manipulate a display-byte:
-- `byte activateByte(byte _byte, byte _activation);` Activates some segments of a byte: B01110111 + B10000000 = B11110111
-- `byte addSegment(byte _byte, int _segment);` Activates a given segment (0=A - 6=G, 7=dp): B01110111, 7 = B11110111
+- `byte addByte(byte _byte, byte _addition);` Activates some segments of a byte: B01110111 + B10000000 = B11110111
+- `byte setSegment(byte _byte, int _segment, true);` Activates/Deactivates a given segment (0=A - 6=G, 7=dp): B01110111, 7 = B11110111
 - `byte inverseByte(byte _byte);` Inverses a byte: B01110111 = B10001000
 
 
