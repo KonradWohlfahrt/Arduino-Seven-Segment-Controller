@@ -1,6 +1,6 @@
 /*
   DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with n digits.
-  Created by Donut Studio, January 08, 2023.
+  Created by Donut Studio, March 08, 2023.
   Released into the public domain.
 */
 
@@ -18,7 +18,7 @@ void setup()
   // initialize the display (common anode) with a refresh time of 2 and brightness of 175
   disp.initialize(true, 2, 175);
   // set the speed of the text scroll effect
-  disp.setTextSpeed(200);
+  disp.setTextUpdate(200);
   // display a text at the display
   disp.setText("Hey, I'm a cool person!");
 }
@@ -26,5 +26,5 @@ void setup()
 void loop() 
 {
   // refresh the display to display the text
-  disp.refreshDisplay();
+  disp.refresh();
 }

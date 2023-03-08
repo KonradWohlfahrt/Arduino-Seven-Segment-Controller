@@ -1,13 +1,13 @@
 /*
   DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with n digits.
-  Created by Donut Studio, January 08, 2023.
+  Created by Donut Studio, March 08, 2023.
   Released into the public domain.
 */
 
 /*
 --- seven segment display ---
 
-       D4        D3       D2        D1        
+       D1        D2       D3        D4        
 
         A
        ---
@@ -27,532 +27,753 @@
 #include "DonutStudioSevenSegment.h"
 
 /*
-  --- SEGMENT CONTROLLER CONSTRUCTOR ---
+  --- --- CONSTRUCTOR --- ---
 */
+
 SegmentController::SegmentController(int a, int b, int c, int d, int e, int f, int g, int dp, int gnd[], int length)
 {
   // set the segment pins
-  segmentPins[0] = a;
-  segmentPins[1] = b;
-  segmentPins[2] = c;
-  segmentPins[3] = d;
-  segmentPins[4] = e;
-  segmentPins[5] = f;
-  segmentPins[6] = g;
-  segmentPins[7] = dp;
+  _segmentPins[0] = a;
+  _segmentPins[1] = b;
+  _segmentPins[2] = c;
+  _segmentPins[3] = d;
+  _segmentPins[4] = e;
+  _segmentPins[5] = f;
+  _segmentPins[6] = g;
+  _segmentPins[7] = dp;
   // check if the dp will be used
-  hasDP = dp > 0;
+  _hasDP = dp > 0;
   
   // set the display length
-  displayLength = length;
-  if (displayLength > MAXDIGITS)
-    displayLength = MAXDIGITS;
+  _displayLength = length;
+  if (_displayLength > MAXDIGITS)
+    _displayLength = MAXDIGITS;
 
   // set the ground pins
-  for (int i = 0; i < displayLength; i++)
-    gndPins[i] = gnd[i];
+  for (int i = 0; i < _displayLength; i++)
+    _gndPins[i] = gnd[i];
 }
 
+
 /*
-  --- PUBLIC METHODS ---
+  --- --- PUBLIC METHODS --- ---
 */
-void SegmentController::initialize(bool _commonAnode, unsigned long _refreshTime, byte _brightness)
+
+/*
+  --- MAIN ---
+*/
+
+void SegmentController::initialize(bool commonAnode, byte refreshTime, byte brightness)
 {
   // set the common pin type 
-  commonPinType = _commonAnode ? 1 : 0;
+  _commonPinType = commonAnode ? 1 : 0;
   // set the display refresh time
-  refreshTime = _refreshTime;
+  _refreshTime = refreshTime;
   // set the brightness of the display
-  setBrightness(_brightness);
+  setBrightness(brightness);
 
   // inverse the bytes if the display is common anode
-  if (commonPinType == 1) 
+  if (_commonPinType == 1) 
   {
     // inverse digits
-    for (int i = 0; i < sizeof(digits) / sizeof(digits[0]); i++) 
-      digits[i] = inverseByte(digits[i]);
+    for (int i = 0; i < sizeof(_digits) / sizeof(_digits[0]); i++) 
+      _digits[i] = inverseByte(_digits[i]);
     // inverse segments
-    for (int i = 0; i < sizeof(segments) / sizeof(segments[0]); i++)
-      segments[i] = inverseByte(segments[i]);
+    for (int i = 0; i < sizeof(_segments) / sizeof(_segments[0]); i++)
+      _segments[i] = inverseByte(_segments[i]);
     // inverse the alphabet
-    for (int i = 0; i< sizeof(alphabet) / sizeof(alphabet[0]); i ++)
-      alphabet[i] = inverseByte(alphabet[i]);
+    for (int i = 0; i< sizeof(_alphabet) / sizeof(_alphabet[0]); i ++)
+      _alphabet[i] = inverseByte(_alphabet[i]);
     // inverse the special characters
-    for (int i = 0; i< sizeof(specialCharacters) / sizeof(specialCharacters[0]); i ++)
-      specialCharacters[i] = inverseByte(specialCharacters[i]);
+    for (int i = 0; i< sizeof(_specialCharacters) / sizeof(_specialCharacters[0]); i ++)
+      _specialCharacters[i] = inverseByte(_specialCharacters[i]);
     // inverse the unknown byte
-    unknownChar = inverseByte(unknownChar);
+    _unidentifiedChar = inverseByte(_unidentifiedChar);
   }
 
   // set the segment pins as output and deactivate them
   for (int i = 0; i < getSegmentLength(); i++)
   {
-    pinMode(segmentPins[i], OUTPUT);
-    digitalWrite(segmentPins[i], 1 - commonPinType);
+    pinMode(_segmentPins[i], OUTPUT);
+    digitalWrite(_segmentPins[i], 1 - _commonPinType);
   }
 
   // set the ground pins as output and deactivate them, reset the effects and displayment byte
-  for (int i = 0; i < displayLength; i++)
+  for (int i = 0; i < _displayLength; i++)
   {
-    blinkDigit[i] = false;
-    enabledDigit[i] = true;
-    currentDisplayByte[i] = digits[10];
-    pinMode(gndPins[i], OUTPUT);
-    digitalWrite(gndPins[i], 1 - commonPinType);
+    _blinkDigit[i] = false;
+    _enabledDigit[i] = true;
+    _currentDisplayByte[i] = _digits[10];
+    pinMode(_gndPins[i], OUTPUT);
+    digitalWrite(_gndPins[i], 1 - _commonPinType);
   }
 }
-void SegmentController::refreshDisplay()
+void SegmentController::refresh()
 {
+  // update the brightness if the display uses common anode
   updateBrightness();
+  // if a scroll text is set, update the position
   if (hasText())
     updateDisplayText();
 
-  for (int i = 0; i < displayLength; i++)
+  // go through the dispay length (digits)
+  for (int i = 0; i < _displayLength; i++)
   {
-    if (!enabledDigit[i])
+    // go to next digit if the current one is not enabled
+    if (!_enabledDigit[i])
       continue;
-    else if (blinkDigit[i] && (millis() % (blinkInterval * 2) > blinkInterval))
+    // wait and go to the next digit if the current one should be blinking
+    else if (_blinkDigit[i] && (millis() % (_blinkInterval * 2) > _blinkInterval))
     {
-      delay(refreshTime);
+      delay(_refreshTime);
       continue;
     }
     
-    analogWrite(gndPins[i], (byte)(255 - constrain(brightness, 0, 255)));
-    setSegments(currentDisplayByte[i]);
+    // activate the digit
+    analogWrite(_gndPins[i], (byte)(255 - constrain(_brightness, 0, 255)));
+    // set the segment according to the display byte
+    setSegments(_currentDisplayByte[i]);
     
-    delay(refreshTime);
+    // wait
+    delay(_refreshTime);
     
-    analogWrite(gndPins[i], 255 * (1 - commonPinType));
-    setSegments(digits[10]);
+    // deactivate the digit
+    analogWrite(_gndPins[i], 255 * (1 - _commonPinType));
+    // deactivate all segments
+    setSegments(_digits[10]);
   }
-  delay(refreshTime);
-}
-void SegmentController::clearDisplay()
-{
-  for (int i = 0; i < displayLength; i++)
-    currentDisplayByte[i] = digits[10];
-  clearDisplayText();
-}
 
-/*
-  settings
-*/
-void SegmentController::setBrightness(byte _brightness)
-{
-  brightness = _brightness;
+  // wait
+  delay(_refreshTime);
 }
-void SegmentController::setBlinkInterval(unsigned int _blinkInterval)
+void SegmentController::clear()
 {
-  blinkInterval = _blinkInterval;
+  // go through the digits and reset them
+  for (int i = 0; i < _displayLength; i++)
+    _currentDisplayByte[i] = _digits[10];
+  // clear the text if it is set
+  if (hasText())
+    clearDisplayText();
 }
-void SegmentController::setUnknownChar(byte _byte)
+void SegmentController::transform(int shift)
 {
-  unknownChar = _byte;
-}
-void SegmentController::setTextSpeed(unsigned int _speed)
-{
-  textSpeed = _speed;
-}
-
-/*
-  displayment
-*/
-void SegmentController::setByte(byte _digits[])
-{
-  clearDisplayText();
-  for (int i = 0; i < displayLength; i++)
-    currentDisplayByte[i] = _digits[i];
-}
-void SegmentController::setInt(int _number, bool _showLeadZeros)
-{
-  if (!numberInRange(_number))
+  // return if nothing will be shifted
+  if (shift == 0)
     return;
-  clearDisplayText();
-  
-  bool lead = !_showLeadZeros;
-  bool negativ = _number < 0;
-  if (negativ)
-    _number *= -1;
 
-  for (int i = displayLength - 1; i >= 0 ; i--)
+  // if the shift is positive go from 0 to the display length(exclusive)
+  if (shift > 0) 
+    for (int i = 0; i < _displayLength; i++)
+      transformDigit(i, shift);
+  // if the shift is negative go from the display length(exclusive) to 0
+  else
+    for (int i = _displayLength - 1; i >= 0; i--)
+      transformDigit(i, shift);
+}
+
+
+/*
+  --- SETTINGS ---
+*/
+
+void SegmentController::setBrightness(byte brightness)
+{
+  // return if the brightness is below 0
+  if (brightness < 0)
+    return;
+  // set the brightness
+  _brightness = brightness;
+}
+byte SegmentController::getBrightness()
+{
+  // return the current brightness
+  return _brightness;
+}
+void SegmentController::setBlinkInterval(int blinkInterval)
+{
+  // return if the blink interval is below or equal to 0
+  if (blinkInterval <= 0)
+    return;
+  // set the blink interval
+  _blinkInterval = blinkInterval;
+}
+int SegmentController::getBlinkInterval()
+{
+  // return the current blink interval
+  return _blinkInterval;
+}
+void SegmentController::setUnidentifiedCharByte(byte b)
+{
+  // set the unidentified character
+  _unidentifiedChar = b;
+}
+byte SegmentController::getUnidentifiedCharByte()
+{
+  // set the current unidentified character
+  return _unidentifiedChar;
+}
+void SegmentController::setTextUpdate(int updateTime)
+{
+  // return if the time is below 0
+  if (updateTime < 0)
+     return;
+  // set the text time
+  _textUpdateTime = updateTime;
+}
+int SegmentController::getTextUpdate()
+{
+  // return the current text update time
+  return _textUpdateTime;
+}
+
+
+/*
+  --- DISPLAY ---
+*/
+
+void SegmentController::setByte(byte b[])
+{
+  // clear the text if it is set
+  if (hasText())
+    clearDisplayText();
+
+  // go through the digits and set the display bytes
+  for (int i = 0; i < _displayLength; i++)
+    _currentDisplayByte[i] = b[i];
+}
+void SegmentController::setInt(int number, bool showLeadZeros)
+{
+  // check if the number is in range to be displayed
+  if (!isNumberInRange(number))
+    return;
+  // clear the text if it is set
+  if (hasText())
+    clearDisplayText();
+  
+  bool lead = !showLeadZeros;
+  bool negativ = number < 0;
+  if (negativ)
+    number *= -1;
+
+  for (int i = _displayLength - 1; i >= 0 ; i--)
   {
-    if (negativ && !lead && i == displayLength - 1)
+    if (negativ && !lead && i == _displayLength - 1)
     {
-      currentDisplayByte[i] = getMinus();
+      _currentDisplayByte[i] = getMinus();
       negativ = false;
       continue;
     }
 
-    byte digit = (int)(_number / pow(10, i)) % 10;
+    byte digit = (int)(number / pow(10, i)) % 10;
     if (negativ && digit == 0 && i > 0)
     {
-      byte d = (int)(_number / pow(10, i - 1)) % 10;
+      byte d = (int)(number / pow(10, i - 1)) % 10;
       if (d != 0)
       {
-        currentDisplayByte[i] = getMinus();
+        _currentDisplayByte[i] = getMinus();
         negativ = false;
       }
     }
     else if (lead && digit == 0)
-    {
-      currentDisplayByte[i] = digits[10];
-    }
+      _currentDisplayByte[i] = _digits[10];
     else
     {
-      currentDisplayByte[i] = digits[digit];
+      _currentDisplayByte[i] = _digits[digit];
       lead = false;
     }
   }
 }
-void SegmentController::setFloat(float _number)
+void SegmentController::setFloat(float number)
 {
-  if (!numberInRange(_number))
+  // check if the number is in range to be displayed
+  if (!isNumberInRange(number))
     return;
-  clearDisplayText();
+  // clear the text if it is set
+  if (hasText())
+    clearDisplayText();
 
-  bool negativ = _number < 0;
+  bool negativ = number < 0;
   if (negativ)
-    _number *= -1;
+    number *= -1;
 
   int exponent = 0;
-  for (int i = -displayLength + 2; i <= displayLength; i++)
+  for (int i = -_displayLength + 2; i <= _displayLength; i++)
   {
-    if (_number < pow(10, i))
+    if (number < pow(10, i))
     {
       exponent = i - 1;
       break;
     }
   }
   
-  int dotIndex = displayLength - 1;
+  int dotIndex = _displayLength - 1;
   if(exponent > 0)
     dotIndex -= exponent;
 
-  _number = _number * pow(10, dotIndex);
-  for (int i = 0; i < displayLength; i++)
+  number = number * pow(10, dotIndex);
+  for (int i = 0; i < _displayLength; i++)
   {
-    byte digit = (int)(_number / pow(10, i)) % 10;
+    byte digit = (int)(number / pow(10, i)) % 10;
 
     if (i == dotIndex)
-      currentDisplayByte[i] = setSegment(digits[digit], 7, true);
+      _currentDisplayByte[i] = setByteSegment(_digits[digit], 7, true);
     else
-      currentDisplayByte[i] = digits[digit];
+      _currentDisplayByte[i] = _digits[digit];
   }
 }
-void SegmentController::setString(String _string, int _transform) 
+void SegmentController::setString(String text, int shift) 
 {
-  if (isStringEmpty(_string))
+  // check if the string to be displayed is empty
+  if (isStringEmpty(text))
     return;
-  if (displayText != "" && !displayText.equals(_string))
+  
+  ///* TODO probably not needed
+
+
+  // clear the text if 
+  if (hasText() && !_displayText.equals(text))
     clearDisplayText();
 
-  for (int i = displayLength - 1; i >= 0 ; i--)
-  {
-    int index = (displayLength - 1) - i;
-    index += _transform;
+  //*/
 
-    if (index < 0 || index >= _string.length())
-      currentDisplayByte[i] = digits[10];
+  for (int i = _displayLength - 1; i >= 0 ; i--)
+  {
+    int index = (_displayLength - 1) - i;
+    index += shift;
+
+    if (index < 0 || index >= text.length())
+      _currentDisplayByte[i] = _digits[10];
     else 
-      currentDisplayByte[i] = getCharacter(_string[index]);
+      _currentDisplayByte[i] = getCharacter(text[index]);
   }
 }
-void SegmentController::setText(String _text, bool restart) 
+void SegmentController::setText(String text) 
 {
-  if (isStringEmpty(_text))
+  // check if the string to be displayed is empty
+  if (isStringEmpty(text))
     return;
-  displayText = _text;
-  displayTextLength = displayText.length();
 
-  if (textTransform >= displayTextLength)
-    restart = true;
-  if (restart)
-    textTransform = -displayLength;
+  // set the text and its length
+  _displayText = text;
+  _displayTextLength = _displayText.length();
 
-  textChangeInterval = millis() + textSpeed;
+  // set the display text index to -1
+  _displayTextIndex = -1;
 
-  setString(displayText, textTransform);
+  // set the last timestamp to the current milliseconds
+  _lastTextChange = millis();
 }
+
 
 /*
-  byte manipulation
+  --- GET ---
 */
-byte SegmentController::getDigit(int _digit)
+
+byte SegmentController::getNumber(int number)
 {
-  if (_digit < 0 || _digit > 9)
-    return digits[10];
-  return digits[_digit];
+  // checks if the number is between 0-9
+  if (number < 0 || number > 9)
+    return _digits[10];
+  // returns the byte representing the number
+  return _digits[number];
 }
-byte SegmentController::getCharacter(char _character)
+byte SegmentController::getCharacter(char character)
 {
-  _character = tolower(_character);
-  switch (_character)
+  // select a proper character from the following characters:
+
+  character = tolower(character);
+  switch (character)
   {
     // alphabet
     case 'a':
-      return alphabet[0];
+      return _alphabet[0];
     case 'b':
-      return alphabet[1];
+      return _alphabet[1];
     case 'c':
-      return alphabet[2];
+      return _alphabet[2];
     case 'd':
-      return alphabet[3];
+      return _alphabet[3];
     case 'e':
-      return alphabet[4];
+      return _alphabet[4];
     case 'f':
-      return alphabet[5];
+      return _alphabet[5];
     case 'g':
-      return alphabet[6];
+      return _alphabet[6];
     case 'h':
-      return alphabet[7];
+      return _alphabet[7];
     case 'i':
-      return alphabet[8];
+      return _alphabet[8];
     case 'j':
-      return alphabet[9];
+      return _alphabet[9];
     case 'k':
-      return alphabet[10];
+      return _alphabet[10];
     case 'l':
-      return alphabet[11];
+      return _alphabet[11];
     case 'm':
-      return alphabet[12];
+      return _alphabet[12];
     case 'n':
-      return alphabet[13];
+      return _alphabet[13];
     case 'o':
-      return alphabet[14];
+      return _alphabet[14];
     case 'p':
-      return alphabet[15];
+      return _alphabet[15];
     case 'q':
-      return alphabet[16];
+      return _alphabet[16];
     case 'r':
-      return alphabet[17];
+      return _alphabet[17];
     case 's':
-      return alphabet[18];
+      return _alphabet[18];
     case 't':
-      return alphabet[19];
+      return _alphabet[19];
     case 'u':
-      return alphabet[20];
+      return _alphabet[20];
     case 'v':
-      return alphabet[21];
+      return _alphabet[21];
     case 'w':
-      return alphabet[22];
+      return _alphabet[22];
     case 'x':
-      return alphabet[23];
+      return _alphabet[23];
     case 'y':
-      return alphabet[24];
+      return _alphabet[24];
     case 'z':
-      return alphabet[25];
+      return _alphabet[25];
 
     // numbers
     case '0':
-      return digits[0];
+      return _digits[0];
     case '1':
-      return digits[1];
+      return _digits[1];
     case '2':
-      return digits[2];
+      return _digits[2];
     case '3':
-      return digits[3];
+      return _digits[3];
     case '4':
-      return digits[4];
+      return _digits[4];
     case '5':
-      return digits[5];
+      return _digits[5];
     case '6':
-      return digits[6];
+      return _digits[6];
     case '7':
-      return digits[7];
+      return _digits[7];
     case '8':
-      return digits[8];
+      return _digits[8];
     case '9':
-      return digits[9];
+      return _digits[9];
 
     // special characters: ! ? [( )] / \ *° " ' + _ : ; = > < ^ ,
     case ' ':
-      return digits[10];
+      return _digits[10];
     case '.':
-      return segments[7];
+      return _segments[7];
     case '-':
       return getMinus();
     case '!':
-      return specialCharacters[0];
+      return _specialCharacters[0];
     case '?':
-      return specialCharacters[1];
+      return _specialCharacters[1];
     case '[':
-      return specialCharacters[2];
+      return _specialCharacters[2];
     case '(':
-      return specialCharacters[2];
+      return _specialCharacters[2];
     case ']':
-      return specialCharacters[3]; 
+      return _specialCharacters[3]; 
     case ')':
-      return specialCharacters[3]; 
+      return _specialCharacters[3]; 
     case '/':
-      return specialCharacters[4];
+      return _specialCharacters[4];
     case '\\':
-      return specialCharacters[5];
+      return _specialCharacters[5];
     case '*':
-      return specialCharacters[6];
+      return _specialCharacters[6];
     case '°':
-      return specialCharacters[6];
+      return _specialCharacters[6];
     case '"':
-      return specialCharacters[7]; 
+      return _specialCharacters[7]; 
     case '\'':
-      return specialCharacters[8];
+      return _specialCharacters[8];
     case '+':
-      return specialCharacters[9];
+      return _specialCharacters[9];
     case '_': 
-      return specialCharacters[10];
+      return _specialCharacters[10];
     case ':':
-      return specialCharacters[11]; 
+      return _specialCharacters[11]; 
     case ';':
-      return specialCharacters[12];
+      return _specialCharacters[12];
     case '=':
-      return specialCharacters[13];
+      return _specialCharacters[13];
     case '>': 
-      return specialCharacters[14];
+      return _specialCharacters[14];
     case '<':
-      return specialCharacters[15]; 
+      return _specialCharacters[15]; 
     case '^':
-      return specialCharacters[16];
+      return _specialCharacters[16];
     case ',':
-      return specialCharacters[17];
+      return _specialCharacters[17];
   }
 
-  return unknownChar;
+  return _unidentifiedChar;
 }
 byte SegmentController::getMinus()
 {
-  return segments[6];
+  // return the minus segment
+  return _segments[6];
 }
 byte SegmentController::getDot()
 {
-  return segments[7];
+  // return the dot segment
+  return _segments[7];
 }
 
-byte SegmentController::addByte(byte _byte, byte _addition)
-{
-  if (commonPinType == 1)
-    return (byte)_byte & (byte)_addition;
-  return (byte)_byte | (byte)_addition;
-}
-byte SegmentController::subtractByte(byte _byte, byte _subtraction)
-{
-  byte subt = inverseByte(_subtraction);
-  if (commonPinType == 1)
-    return (byte)_byte | (byte)subt;
-  return (byte)_byte & (byte)subt;
-}
-byte SegmentController::setSegment(byte _byte, int _segment, bool _value)
-{
-  if (_segment < 0 || _segment > 7)
-    return _byte;
-  if (_value)
-    return addByte(_byte, segments[_segment]);
-  return subtractByte(_byte, segments[_segment]);
-}
-
-byte SegmentController::inverseByte(byte _byte)
-{
-  return ~_byte;
-}
-
-void SegmentController::setDisplaySegment(int _digit, int _segment, bool _value)
-{
-  if (_digit < 0 || _digit >= displayLength)
-    return;
-  currentDisplayByte[_digit] = setSegment(currentDisplayByte[_digit], _segment, _value);
-}
 
 /*
-  effects
+  --- BYTES ---
 */
-void SegmentController::setBlink(int _digit, bool _value)
+
+byte SegmentController::addByte(byte b, byte addition)
 {
-  if (_digit < 0 || _digit >= displayLength)
+  // check if the display is common anode, use AND operator otherwise use OR
+  if (_commonPinType == 1)
+    return (byte)b & (byte)addition;
+  return (byte)b | (byte)addition;
+}
+byte SegmentController::subtractByte(byte b, byte subtraction)
+{
+  // inverse the byte
+  byte sub = inverseByte(subtraction);
+  // check if the display is common anode, use OR operator otherwise use AND
+  if (_commonPinType == 1)
+    return (byte)b | (byte)sub;
+  return (byte)b & (byte)sub;
+}
+byte SegmentController::inverseByte(byte b)
+{
+  // perform the inverse operation on the byte
+  return ~b;
+}
+byte SegmentController::setByteSegment(byte b, byte segmentIndex, bool value)
+{
+  // return if segment is not in range
+  if (!isSegmentInRange(segmentIndex))
+    return b;
+  // perform addition or subtraction according to the value
+  if (value)
+    return addByte(b, _segments[segmentIndex]);
+  return subtractByte(b, _segments[segmentIndex]);
+}
+bool SegmentController::byteSegmentActive(byte b, byte segmentIndex)
+{
+  // return if segment is not in range
+  if (!isSegmentInRange(segmentIndex))
+    return false;
+
+  // check if the display is common anode, use OR operator otherwise use AND; check if the segment is enabled
+  if (_commonPinType == 1)
+    return (b | _segments[segmentIndex]) != B11111111;
+  return (b & _segments[segmentIndex]) != 0;
+}
+
+
+/*
+  --- DISPLAY BYTES ---
+*/
+
+void SegmentController::setDigit(int digitIndex, byte b) 
+{
+  // check if the digit is outside of the range
+  if (!isDigitInRange(digitIndex))
     return;
-  blinkDigit[_digit] = _value;
+  // set the currently displayed byte to the given byte
+  _currentDisplayByte[digitIndex] = b;
 }
-void SegmentController::setBlinkAll(bool _value)
+byte SegmentController::getDigit(int digitIndex)
 {
-  for (int i = 0; i < displayLength; i++)
-    blinkDigit[i] = _value;
+  // check if the digit is outside of the range
+  if (!isDigitInRange(digitIndex))
+    return 0;
+  // return the currently displayed byte
+  return _currentDisplayByte[digitIndex];
 }
-void SegmentController::setDigit(int _digit, bool _value)
+void SegmentController::setDigitSegment(int digitIndex, byte segmentIndex, bool value)
 {
-  if (_digit < 0 || _digit >= displayLength)
+  // check if the digit or segment is outside of the range
+  if (!isDigitInRange(digitIndex) || !isSegmentInRange(segmentIndex))
     return;
-  enabledDigit[_digit] = _value;
+  // set a segment of the current displayed byte
+  _currentDisplayByte[digitIndex] = setByteSegment(_currentDisplayByte[digitIndex], segmentIndex, value);
 }
-void SegmentController::setDigitAll(bool _value)
+bool SegmentController::digitSegmentActive(int digitIndex, byte segmentIndex)
 {
-  for (int i = 0; i < displayLength; i++)
-    enabledDigit[i] = _value;
+  // check if the digit or segment is outside of the range
+  if (!isDigitInRange(digitIndex) || !isSegmentInRange(segmentIndex))
+    return false;
+  // check if the segment of the currently displayed byte is active or not
+  return byteSegmentActive(_currentDisplayByte[digitIndex], segmentIndex);
 }
+
+
+/*
+  --- EFFECTS ---
+*/
+
+void SegmentController::setDigitState(int digitIndex, bool value)
+{
+  // check if the digit is outside of the range
+  if (!isDigitInRange(digitIndex))
+    return;
+  // set the value for the digit
+  _enabledDigit[digitIndex] = value;
+}
+void SegmentController::setDigitStateAll(bool value)
+{
+  // go through all digits and set the value
+  for (int i = 0; i < _displayLength; i++)
+    _enabledDigit[i] = value;
+}
+bool SegmentController::getDigitState(int digitIndex)
+{
+  // check if the digit is outside of the range
+  if (!isDigitInRange(digitIndex))
+    return false;
+  // return the state of the digit
+  return _enabledDigit[digitIndex];
+}
+
+void SegmentController::setBlinking(int digitIndex, bool value)
+{
+  // check if the digit is outside of the range
+  if (!isDigitInRange(digitIndex))
+    return;
+  // set the value for the digit
+  _blinkDigit[digitIndex] = value;
+}
+void SegmentController::setBlinkingAll(bool value)
+{
+  // go through all digits and set the value
+  for (int i = 0; i < _displayLength; i++)
+    _blinkDigit[i] = value;
+}
+bool SegmentController::getBlinking(int digitIndex)
+{
+  // check if the digit is outside of the range
+  if (!isDigitInRange(digitIndex))
+    return false;
+  // return the state of the digit
+  return _blinkDigit[digitIndex];
+}
+
 void SegmentController::resetEffects()
 {
-  setDigitAll(true);
-  setBlinkAll(false);
+  // enable all digits
+  setDigitStateAll(true);
+  // disable blinking on all digits
+  setBlinkingAll(false);
 }
 
-/*
-  other
-*/
-bool SegmentController::isStringEmpty(String _string)
-{
-  return _string.length() <= 0;
-}
-bool SegmentController::numberInRange(int _number)
-{
-  return (-(pow(10, displayLength - 1) - 1)) <= _number 
-    && _number <= (pow(10, displayLength) - 1);
-}
-bool SegmentController::numberInRange(float _number)
-{
-  return (-(pow(10, displayLength - 1) - 1)) <= _number 
-    && _number <= (pow(10, displayLength) - 1);
-}
 
 /*
-  --- PRIVATE METHODS ---
+  --- OTHER ---
 */
-void SegmentController::setSegments(byte _digit)
+bool SegmentController::isStringEmpty(String s)
 {
+  // return if the length of the string is (lower or) equal to 0 
+  return s.length() <= 0;
+}
+bool SegmentController::isNumberInRange(int number)
+{
+  // check if the number is inside of the display range
+  return (-(pow(10, _displayLength - 1) - 1)) <= number && number <= (pow(10, _displayLength) - 1);
+}
+bool SegmentController::isNumberInRange(float number)
+{
+  // check if the number is inside of the display range
+  return (-(pow(10, _displayLength - 1) - 1)) <= number && number <= (pow(10, _displayLength) - 1);
+}
+bool SegmentController::isDigitInRange(int digitIndex) 
+{
+  // return if the index is inside of the display range
+  return 0 <= digitIndex && digitIndex < _displayLength;
+}
+bool SegmentController::isSegmentInRange(byte segmentIndex)
+{
+  // return if the index is between 0-7
+  return 0 <= segmentIndex && segmentIndex < 8;
+}
+
+
+
+/*
+  --- --- PRIVATE METHODS --- ---
+*/
+
+void SegmentController::setSegments(byte d)
+{
+  // start with the first bit (right)
   byte pointer = 1;
-
+  // go through the segments
   for (int i = 0; i < getSegmentLength(); i++)
   {
-    byte value = _digit & pointer;
-    digitalWrite(segmentPins[i], value);
+    // perform AND operator to check if the digit should be activated or not
+    byte value = d & pointer;
+    // write the value from the AND operator to the pin
+    digitalWrite(_segmentPins[i], value);
+    // go to the next bit (left)
     pointer *= 2;
   }
 }
 void SegmentController::updateBrightness()
 {
-  if (commonPinType == 1)
-    brightness = 255 - brightness;
+  // inverse the brightness if the display is common anode
+  if (_commonPinType == 1)
+    _brightness = 255 - _brightness;
 }
-void SegmentController::updateDisplayText()
+void SegmentController::transformDigit(int digitIndex, int shift)
 {
-  if (millis() >= textChangeInterval)
-  {
-    textTransform++;
-    if (textTransform >= displayTextLength)
-      textTransform = -displayLength;
+  // get the index to copy from
+  int index = digitIndex + shift;
 
-    textChangeInterval = millis() + textSpeed;
-
-    setString(displayText, textTransform);
-  }
-}
-void SegmentController::clearDisplayText()
-{
-  displayText = "";
+  // check if the copy index is in range and copy, if not copy empty digit
+  if (isDigitInRange(index))
+    _currentDisplayByte[digitIndex] = _currentDisplayByte[index];
+  else
+    _currentDisplayByte[digitIndex] = _digits[10];
 }
 
 int SegmentController::getSegmentLength()
 {
-  if (hasDP)
+  // return the length of the segments according to the decimal pin
+  if (_hasDP)
     return 8;
   return 7;
 }
 bool SegmentController::hasText()
 {
-  return !isStringEmpty(displayText);
+  // return if the display string is not empty
+  return !isStringEmpty(_displayText);
+}
+
+void SegmentController::updateDisplayText()
+{
+  // calculate a duration to prevent millis overflow
+  if (millis() - _lastTextChange > _textUpdateTime)
+  {
+    // transform the text by one
+    transform(-1);
+    // select the next element
+    _displayTextIndex++;
+
+    // reset the index if the text is done scrolling
+    if (_displayTextIndex >= _displayTextLength + _displayLength)
+      _displayTextIndex = -1;
+    // set the next text element if it is still in range
+    else if (_displayTextIndex < _displayTextLength)
+      _currentDisplayByte[0] = getCharacter(_displayText[_displayTextIndex]);
+
+    // set the last timestamp to the current milliseconds
+    _lastTextChange = millis();
+  }
+}
+void SegmentController::clearDisplayText()
+{
+  // reset the string
+  _displayText = "";
 }

@@ -1,6 +1,6 @@
 /*
   DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with n digits.
-  Created by Donut Studio, January 08, 2023.
+  Created by Donut Studio, March 08, 2023.
   Released into the public domain.
 */
 
@@ -17,7 +17,7 @@ SegmentController disp = SegmentController(2, 3, 4, 5, 6, 7, 8, 9, gnd, 4);
 // byte (already inverted for common anode)
 byte b[4] = { B10101010, B01111001, B10001000, B10000011 };
 
-unsigned long nextUpdate = 0;
+unsigned long lastUpdate = 0;
 int updateTime = 1500;
 
 int state = -1;
@@ -35,14 +35,14 @@ void setup()
   disp.setInt(0, true);
 
   // set the update time for the next state
-  nextUpdate = millis() + updateTime;
+  lastUpdate = millis();
 }
 void loop() 
 {
   // refresh the display
-  disp.refreshDisplay();
+  disp.refresh();
   
-  if (millis() > nextUpdate)
+  if (millis() - lastUpdate > updateTime)
   {
     state = (state + 1) % 20;
     disp.resetEffects();
@@ -54,19 +54,19 @@ void loop()
         Serial.println("--blink test--");
         disp.setBlinkInterval(250);
         disp.setInt(0, true);
-        disp.setBlink(0, true);
+        disp.setBlinking(0, true);
         break;
       case 1:
         disp.setBlinkInterval(125);
-        disp.setBlink(1, true);
+        disp.setBlinking(1, true);
         break;
       case 2:
         disp.setBlinkInterval(500);
-        disp.setBlink(2, true);
+        disp.setBlinking(2, true);
         break;
       case 3:
         disp.setBlinkInterval(200);
-        disp.setBlink(3, true);
+        disp.setBlinking(3, true);
         break;
 
       // float displayment
@@ -113,7 +113,7 @@ void loop()
 
         b[0] = disp.addByte(b[0], B10110110);
         b[1] = disp.subtractByte(b[1], B01111111);
-        b[2] = disp.setSegment(b[2], 7, true);
+        b[2] = disp.setByteSegment(b[2], 7, true);
         b[3] = disp.inverseByte(b[3]);
 
         disp.setByte(b);
@@ -121,10 +121,10 @@ void loop()
       case 12:
         Serial.println("display byte segment");
 
-        disp.setDisplaySegment(0, 6, true);
-        disp.setDisplaySegment(1, 2, true);
-        disp.setDisplaySegment(2, 6, false);
-        disp.setDisplaySegment(3, 3, false);
+        disp.setDigitSegment(0, 6, true);
+        disp.setDigitSegment(1, 2, true);
+        disp.setDigitSegment(2, 6, false);
+        disp.setDigitSegment(3, 3, false);
         break;
 
       // string displayment
@@ -151,20 +151,20 @@ void loop()
       // text displayment
       case 17:
         Serial.println("--text test--");
-        disp.setTextSpeed(200);
+        disp.setTextUpdate(200);
         disp.setText("Hey, how are you?");
         break;
 
       // check text speed
       case 18:
         Serial.println("text speed test");
-        disp.setTextSpeed(300);
+        disp.setTextUpdate(300);
         break;
       case 19:
-        disp.setTextSpeed(100);
+        disp.setTextUpdate(100);
         break;
     }
 
-    nextUpdate = millis() + updateTime;
+    lastUpdate = millis();
   }
 }

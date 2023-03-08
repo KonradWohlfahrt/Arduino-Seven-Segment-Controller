@@ -1,6 +1,6 @@
 /*
   DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with n digits.
-  Created by Donut Studio, January 08, 2023.
+  Created by Donut Studio, March 08, 2023.
   Released into the public domain.
 */
 
@@ -24,5 +24,5 @@ void setup()
 void loop() 
 {
   // refresh the display to display the number
-  disp.refreshDisplay();
+  disp.refresh();
 }

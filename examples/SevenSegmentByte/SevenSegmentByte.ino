@@ -1,6 +1,6 @@
 /*
   DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with n digits.
-  Created by Donut Studio, January 08, 2023.
+  Created by Donut Studio, March 08, 2023.
   Released into the public domain.
 */
 
@@ -29,7 +29,7 @@ void setup()
   // set the fourth byte to a minus
   b[3] = disp.getMinus(); 
   // activate the dot segment(7th element) at the third byte
-  b[2] = disp.setSegment(b[2], 7, true);
+  b[2] = disp.setByteSegment(b[2], 7, true);
   // inverse the second byte
   b[1] = disp.inverseByte(b[1]);
   // addes the byte on the first byte and therefore activates them: g,f,b
@@ -42,5 +42,5 @@ void setup()
 void loop() 
 {
   // refresh the display to display the byte
-  disp.refreshDisplay();
+  disp.refresh();
 }
