@@ -5,6 +5,7 @@ The library is able to display an int, float, string or your own symbol. You can
 Feel free to use it anywere in your projects.
 Cheers, Donut Studio!
 
+[Check out the wiki](https://github.com/Donut-Studio/Arduino-Seven-Segment-Controller/wiki)
 
 ***
 # Features
