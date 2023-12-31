@@ -7,9 +7,10 @@ Cheers, Donut Studio!
 
 [Check out the wiki](https://github.com/Donut-Studio/Arduino-Seven-Segment-Controller/wiki)
 
+
 ***
 # Features
-- control a seven segment display directly with you ATmega without having to use another controller
+- control a seven segment display directly with an Arduino IDE compatible chip
 - display integers, ~~floats~~(wip), strings and your own symbols
 - enable/disable digits
 - enable/disable blinking on digits
