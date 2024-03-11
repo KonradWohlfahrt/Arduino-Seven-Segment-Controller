@@ -1,6 +1,6 @@
 /*
   DonutStudioSevenSegment.h - Library for controlling a seven-segment-display with multiple digits.
-  Created by Donut Studio, December 30, 2023.
+  Created by Donut Studio, March 11, 2024.
   Released into the public domain.
 */
 
@@ -24,8 +24,8 @@
 
 
 
-#ifndef DonutStudioSevenSegment.h
-#define DonutStudioSevenSegment.h
+#ifndef DonutStudioSevenSegment_h
+#define DonutStudioSevenSegment_h
 #endif
 
 
